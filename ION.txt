@@ -1,0 +1,39 @@
+version 4.0(2)
+license grace-period
+feature ospf
+feature pim
+feature eigrp
+feature udld
+feature interface-vlan
+
+vrf context management
+  ip route 0.0.0.0/0 192.168.30.1
+
+route-map STAT-MAP permit 10
+  match ip address STAT-LIST 
+  set metric-type type-1
+key chain eigrp
+  key 7
+    key-string 7 070c285f4d06
+vdc dcb-n7k1 id 1
+  limit-resource vlan minimum 16 maximum 4094
+  limit-resource monitor-session minimum 0 maximum 2
+  limit-resource vrf minimum 16 maximum 8192
+  limit-resource port-channel minimum 0 maximum 192
+  limit-resource u4route-mem minimum 32 maximum 80
+  limit-resource u6route-mem minimum 16 maximum 48
+
+interface Vlan128
+  no shutdown
+  ip address 10.8.128.3/24
+  ip pim sparse-mode
+  ip igmp version 3
+  ip router eigrp 8
+  ip passive-interface eigrp 8
+  hsrp 1
+    authentication c1sc0
+    preempt delay minimum 180 
+    priority 20
+    timers  1  3
+    ip 10.8.128.1 
+

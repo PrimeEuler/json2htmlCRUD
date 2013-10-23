@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset='UTF-8' />
+	<title>CURD</title>
+	<!-- Add jQuery -->
+
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.11/jquery-ui.min.js"></script>
+
+    <!--
+  <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+  <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+  -->
+
+
+	<!-- Add JSON2HTML -->
+	<script src='/js/json2html.js' type='text/javascript'></script>
+	<script src='/js/jquery.json2html.js' type='text/javascript'></script>
+    <!-- Add socket.io -->
+    <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+	<script>
+	    ////#595540
+	    //
+	    //
+	    //border:thin solid #595540;
+    </script>
+<style>
+    
+		#page {     min-height:600px;
+		       		background-color: #262626;
+		            border-radius: 5px 5px 5px 5px;
+		            box-shadow: 0 0 5px #000000;
+		            clear: left;
+		            padding: 60px 0 0;
+		            margin-top:0px;}
+		#header, #page, #footer {
+		            margin: 0 auto;
+		            position: relative;
+		            width: 670px;}   
+		html {      background-color: #262626;}
+	    body {      background-color: transparent;
+		            font-family: monospace;
+		            font-size: 10pt;
+		            padding: 0px 0 30px;}
+		            
+		.package {  margin-left:10px;
+		            padding:3px;
+		            border-radius:10px;
+		            margin-top:2px;}
+		.header {   cursor:pointer;}
+
+		.name {     color:#cc8139;}
+    .selected {color:red;}
+		.array {    background-color:#262626;
+		            border:thin solid #595540}
+		.object {   background-color:#262626;
+		            border:thin solid #595540}
+		.string {   color:papayawhip;}
+		.number {   color:papayawhip;}
+		.function { color:papayawhip;}
+
+		.open .children {display:block;}
+		.closed .children {display:none;}
+		
+		.arrow {    background-image:url("/js/d.png"); 
+		            background-repeat:no-repeat; 
+		            background-color:transparent; 
+		            height:15px; width:15px; 
+		            display:inline-block;}
+
+		.open .arrow {background-position:-20px 0;}
+		.closed .arrow {background-position:0 0;}
+
+		.type {     color:gray;
+		            font-size:8pt;
+		            float:right;}
+
+		.hide {     display:none;}
+		.ui-autocomplete{width:100px;}
+		 .ui-menu { color:#cc8139;}
+
+        .input {
+                    background-color: #262626;
+                    color: papayawhip;
+                    font-family: monospace;
+                    border: 5px solid #595540;}		
+		#main {     width:100%;
+		            height:500px;
+		            overflow-y:scroll;}
+		#top{background-repeat: no-repeat;}
+		#input { 
+                    border-radius:10px;
+                    width: 600px;
+                    height:40px;
+                    font-size: 1.5em;
+                    background-color: #cc8139;
+                    color: #262626;
+                    font-family: monospace;
+                    border: 5px solid #262626;
+                    background-image: url("/js/prompt.png");
+                    position:absolute;
+                    top:0%;left:50%;
+                    margin-top:0px;
+                    margin-left:-330px;
+                    background-repeat: no-repeat;
+                    padding-left: 45px; }
+        #toolbar {  width: 750px;
+                    margin: auto;
+                    padding: 0em;
+                    border: 0px;
+                    margin-top: -5px;
+                    display: none; }
+	</style>
+</head>
+<body>
+	<section id='page'>
+		<header id='page-header'>
+        <div id="toolbar" style="display:block;"><input id="input"/></div>
+		</header>
+		<article>
+				<div id='top'></div>
+			</div>
+		</article>
+
+	</section>
+</body>
+
+<script type='text/javascript'>
+    var socket = io.connect();
+
+    var transforms = {
+        'object': { 'tag': 'div', 'class': 'package ${show} ${type}', 'children': [
+			{ 'tag': 'div', 'class': 'header', 'children': [
+				{ 'tag': 'div', 'class': function (obj) {
+				    if (getValue(obj.value) !== undefined) return ('arrow hide');
+				    else return ('arrow');
+				} 
+				},
+				{ 'tag': 'span', 'class': 'name', 'html': '${name} : ' },
+				{ 'tag': 'span', 'class': '${selected}', '_id':'${_id}','fqn':'${fqn}','html': function (obj) {
+				    var value = getValue(obj.value);
+				    if (value !== undefined) return (value);
+				    else return ('');
+				} 
+				}
+				//,{ 'tag': 'span', 'class': 'type', 'html': '${type}' }
+			]
+			},
+			{ 'tag': 'div', 'class': 'children', 'children': function (obj) { return (children(obj.value)); } }
+		]
+        }
+    };
+
+    function visualize(json, path) {
+        $('#top').html('');
+        $('#top').json2html(convert('', json, json, 'open', path), transforms.object);
+        regEvents();
+    }
+
+    function getValue(obj) {
+        var type = $.type(obj);
+
+        switch (type) {
+            case 'array':
+            case 'object':
+                return (undefined);
+                break;
+            case 'function':
+                return ('function');
+                break;
+            case 'string':
+                return (obj) ;
+                break;
+            default:
+                return (obj);
+                break;
+        }
+    }
+
+    function children(obj) {
+        var type = $.type(obj);
+        switch (type) {
+            case 'array':
+            case 'object':
+                return (json2html.transform(obj, transforms.object));
+                break;
+            default:
+                break;
+        }
+    }
+
+    function convert(fqn, name, obj, show, path, _id, selected) {
+        var type = $.type(obj);
+
+        if (show === undefined) show = 'closed';
+        if (!_id) { _id = obj._id; }
+        if (!selected) { selected = 'value'; }
+        var children = [];
+        var delimiter = "";
+        if (fqn != '') { delimiter = "."; }
+        if (name === '_id' || name === '__v') {
+            type = 'hide';
+        }
+        switch (type) {
+            case 'array':
+                var len = obj.length;
+                show = 'closed';
+                for (var j = 0; j < len; ++j) {
+                    if (path.indexOf(fqn + delimiter + j) > -1 || fqn == '') {
+                        show = 'open';
+                    } 
+                    children[j] = convert(fqn + delimiter + j, j, obj[j], show, path, _id, selected);
+                }
+                break;
+            case 'object':
+                var j = 0;
+                show = 'closed';
+                for (var prop in obj) {
+                    if (path.indexOf(fqn + delimiter + prop) > -1 || fqn == '') {
+                        show = 'open';
+                    }
+                    children[j] = convert(fqn + delimiter + prop, prop, obj[prop], show, path, _id, selected);
+                    j++;
+                }
+                break;
+            default:
+                if (fqn == path) {
+                    selected = 'selected';
+                }
+                children = obj;
+                break;
+        }
+        name = name.toString().toUpperCase();
+        return ({ 'fqn': fqn, 'name': name, 'value': children, 'type': type, 'show': show, 'path': path, '_id': _id, 'selected': selected });
+
+    }
+
+    function regEvents() {
+        $('.header').click(function () {
+            var parent = $(this).parent();
+
+            if (parent.hasClass('closed')) {
+                parent.removeClass('closed');
+                parent.addClass('open');
+            } else {
+                parent.removeClass('open');
+                parent.addClass('closed');
+            }
+        });
+        $(document).bind("contextmenu", function (event) {
+            event.preventDefault();
+        });
+        $('.selected').bind('mousedown', function (event) {
+            if (event.which == 3) {
+
+                $(this).attr('contentEditable', true);
+                $(this).css('background-color', '#cc8139');
+            }
+        })
+        $('.selected').blur(
+        function () {
+            $(this).attr('contentEditable', false);
+            $(this).css('background-color', '#262626');
+            var query = {};
+            query._id = $(this).attr('_id');
+            var SET = {}
+            SET[$(this).attr('fqn')] = $(this).text();
+            query['set'] = SET;
+            socket.emit('UPDATE', query, function (data) {
+                //alert('Changes saved');
+            });
+        })
+        $('.value').bind('mousedown', function (event) {
+            if (event.which == 3) {
+                $(this).attr('contentEditable', true);
+                $(this).css('background-color', '#cc8139');
+            }
+        })
+        $('.value').blur(
+        function () {
+            $(this).attr('contentEditable', false);
+            $(this).css('background-color', '#262626');
+            var query = {};
+            query._id =  $(this).attr('_id') ;
+            var SET ={}
+            SET[$(this).attr('fqn')] = $(this).text();
+            query['set'] = SET;
+            socket.emit('UPDATE', query, function (data) {
+                //alert('Changes saved');
+            });
+        });
+
+    }
+
+</script>
+<script type="text/javascript">
+
+    BIGSEARCH = function (request, response) {
+        var req = {};
+        req.label = request["term"]; //value hack
+        req.value = '*'; //path hack
+        socket.emit('READ', req, function (data) {
+
+            $('#top').html('');
+
+            response($.map(data, function (el) {
+                return {
+                    label: el.value,
+                    value: el.path
+                };
+            }));
+
+        });
+
+    }
+
+    $(function () {
+
+        $("#input").autocomplete({
+            source: BIGSEARCH,
+            minLength: 3,
+            delay: 500,
+            focus: function (event, ui) {
+                this.value = ui.item.value + ":" + ui.item.label;
+                event.preventDefault();
+            },
+            select: function (event, ui) {
+                this.value = ui.item.label;
+                event.preventDefault();
+
+                var req = {};
+                req.label = ui.item.label; //value hack
+                req.value = ui.item.value; //path hack
+
+                socket.emit('READ', req, function (data) {
+                    visualize(data.json, data.path);
+                });
+            }
+        });
+
+    });
+</script>
+
+</html>
