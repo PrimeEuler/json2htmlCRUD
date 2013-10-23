@@ -1,16 +1,11 @@
 
 var Lexer = require('./lib/util-lexer');
 var MongoCrud = require('./lib/util-mongocrud');
-var MongoClient = require('mongodb').MongoClient;
 var ObjectID = require('mongodb').ObjectID;
-var $ = require('jquery');
-var json2html = require('node-json2html');
-var net = require('net');
+
 var express = require('express.io');
 var fs = require('fs');
 var app = express();
-var EventEmitter = require('events').EventEmitter;
-var util = require('util');
 
 /*
 options = {
