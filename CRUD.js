@@ -7,6 +7,8 @@ var express = require('express.io');
 var fs = require('fs');
 var app = express();
 
+var watch = require('watch')
+
 /*
 options = {
 key: fs.readFileSync('./ssl/myServer.key'),
@@ -38,7 +40,7 @@ app.io.route('READ', function (req) {
 		} else {
 			data = json;
 		}
-		console.log(data);
+		//console.log(data);
 		req.io.respond(data);
 		data = {};
 	});
@@ -56,22 +58,40 @@ var crud = new MongoCrud('mongodb://127.0.0.1:27017/test');
 var schemaName = 'ION';
 var fs = require('fs')
 var lex = new Lexer();
-fs.readFile(schemaName + '.txt', 'utf8', function (err, data) {
-	if (err) throw err;
-	lex.ion2json(schemaName, data, '::', function (json) {
-		crud.collections[schemaName] = {};
-		crud.collections[schemaName] = json;
-		crud.collections[schemaName]._id = new ObjectID();
-		console.log(crud.collections[schemaName]);
-		//console.log(JSON.stringify(CRUD.collections[schemaName], null, '\t'));
-		/*
-		CRUD.CREATE( CRUD.collections[schemaName], schemaName, function (results) {
-			console.log(results);
-		});
-		*/
-	});
 
-});
+
+
+watch.createMonitor('TFTP-Root/', function (monitor) {
+    //monitor.files['/home/mikeal/.zshrc'] // Stat object for my zshrc.
+    monitor.on("created", function (f, stat) {
+        // Handle new files'
+        console.log(f,'is a new file');
+        fs.readFile(f, 'utf8', function (err, data) {
+            if (err) throw err;
+            lex.ion2json(schemaName, data, '.', function (json) {
+                crud.collections[schemaName] = {};
+                crud.collections[schemaName] = json;
+                crud.collections[schemaName]._id = new ObjectID();
+                //console.log(crud.collections[schemaName]);
+                //console.log(JSON.stringify(CRUD.collections[schemaName], null, '\t'));
+                
+                crud.CREATE( crud.collections[schemaName], schemaName, function (results) {
+                console.log(results);
+                });
+                
+            });
+
+        });
+    })
+    monitor.on("changed", function (f, curr, prev) {
+        // Handle file changes
+        console.log(f,'was changed');
+    })
+    monitor.on("removed", function (f, stat) {
+        // Handle removed files
+        console.log(f,  'was removed');
+    })
+})
 
 
 
